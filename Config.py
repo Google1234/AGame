@@ -57,7 +57,7 @@ class coupon_feature_format():
         self.used_coupon=4
         self.not_used_coupon=5
         self.use_ratio=6
-
+        self.len = 7
 
 path="Data/"
 feature_path="Feature/"
