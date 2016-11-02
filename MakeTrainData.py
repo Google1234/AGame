@@ -25,7 +25,16 @@ def split_file(_dir,file_name,parts,file_format=Config.file_offline_train_line):
     rats.iloc[last_line:].to_csv(_dir+"tmp/" +str(id) + file_name, index=None, header=None)
     names.append(str(id)+file_name)
     return _dir+"tmp/",names
-def make(_dir,file,file_format=Config.file_offline_train_line()):
+#def make(_dir,file,file_format=Config.file_offline_train_line()):
+def make(dic):
+    dic={}
+    _dir=dic["_dir"]
+    file=dic["file"]
+    if "file_format" in dic.keys():
+        file_format=dic["file_format"]
+    else:
+        file_format=Config.file_offline_train_line()
+
     rats=pandas.read_csv(_dir+file,header=None)
     postive_sample=[]
     negtive_sample=[]
@@ -78,6 +87,9 @@ def make(_dir,file,file_format=Config.file_offline_train_line()):
 
 def parallel_make(process_numbers):
     _dir,names=split_file("","test.csv",process_numbers)
+    dicts=[{} for i in range(len(names))]
+    for i in range():
+        dicts[]
     from multiprocessing import Pool
     pool = Pool(process_numbers)
     pool.map(make,names)
