@@ -179,11 +179,15 @@ def bulid_coupon_feature():
     sort_before.to_csv(Config.path+Config.feature_path+"Coupon_from_offline_train.csv",index=None,header=None)
 
 class user_feature():
-    def __init__(self,filename):
+    def __init__(self,filename,recalculate_avr):
         self.rats=pandas.read_csv(filename,header=None)
         self.len=len(self.rats)
         self.feature=Config.user_feature_format()
-        self.average=[0,0,0,0,0,0]
+        self.average = [0.000000,0.139742,1.300617,1.952554,0.073788,0.337112]
+        if recalculate_avr==True:
+            self.average=self.rats.mean(axis=0)
+            self.average[self.feature.user_id]=0
+        #print self.average
     def get(self,user_id):
         left=0
         right=self.len-1
@@ -192,48 +196,57 @@ class user_feature():
         while left<=right:
             mid=(left+right)/2
             if self.rats.iloc[mid][self.feature.user_id]==user_id:
-                return self.rats.iloc[mid]
+                return [i for i in self.rats.iloc[mid]]
             else:
                 if self.rats.iloc[mid][self.feature.user_id]<user_id:
                     left=mid+1
                 else:
                     right=mid-1
         return self.average
-#user=user_feature(Config.path+Config.feature_path+"User_from_offline_train.csv")
+#user=user_feature(Config.path+Config.feature_path+"User_from_offline_train.csv",True)
 #print user.get(723014)
 
 class merchant_feature():
-    def __init__(self,filename):
+    def __init__(self,filename,recalculate_avr):
         self.rats=pandas.read_csv(filename,header=None)
         self.len=len(self.rats)
         self.feature=Config.merchant_feature_format()
-        self.average=[0,0,0,0,0,0]
+        self.average=[0.000000,8.958051,83.375163,125.167201,0.295601,0.089236]
+        if recalculate_avr==True:
+            self.average=self.rats.mean(axis=0)
+            self.average[self.feature.merchant_id]=0
+        #print self.average
     def get(self,merchant_id):
         left=0
         right=self.len-1
-        if merchant_id<self.rats.iloc[left][self.feature.merchant_id] or merchant_id>self.rats.iloc[right][self.feature.merchant_id]:
+        if merchant_id<self.rats.iloc[left][self.feature.merchant_id] or merchant_id>self.rats.iloc[right][self.feature.merchant_id] :
             return self.average
         while left<=right:
             mid=(left+right)/2
             if self.rats.iloc[mid][self.feature.merchant_id]==merchant_id:
-                return self.rats.iloc[mid]
+                return [i for i in self.rats.iloc[mid]]
             else:
                 if self.rats.iloc[mid][self.feature.merchant_id]<merchant_id:
                     left=mid+1
                 else:
                     right=mid-1
         return self.average
-#merchant=user_feature(Config.path+Config.feature_path+"Merchant_from_offline_train.csv")
+#merchant=user_feature(Config.path+Config.feature_path+"Merchant_from_offline_train.csv",True)
 #print merchant.get(0)
 
 class coupon_feature():
-    def __init__(self,filename):
+    def __init__(self,filename,recalculate_avr):
         self.rats=pandas.read_csv(filename,header=None)
         self.len=len(self.rats)
         self.feature=Config.coupon_feature_format()
-        self.average=[0,0,0,0,0,0]
-        print type(self.rats.iloc[0][self.feature.coupon_id])
+        self.average=[0.000000,0.898039,40.118595,0.208894,7.740220,100.410720,0.197088]
+        if recalculate_avr == True:
+            self.average = self.rats.mean(axis=0)
+            self.average[self.feature.coupon_id] = 0
+            print self.average
     def get(self,id):
+        if id=="null":
+            return self.average
         coupon_id=int(id)
         left=0
         right=self.len-1
@@ -242,12 +255,21 @@ class coupon_feature():
         while left<=right:
             mid=(left+right)/2
             if self.rats.iloc[mid][self.feature.coupon_id]==coupon_id:
-                return self.rats.iloc[mid]
+                return [i for i in self.rats.iloc[mid]]
             else:
                 if self.rats.iloc[mid][self.feature.coupon_id]<coupon_id:
                     left=mid+1
                 else:
                     right=mid-1
         return self.average
-#coupon=coupon_feature(Config.path+Config.feature_path+"Coupon_from_offline_train.csv")
-#print coupon.get(10001)
+
+class user_Collaborate_merchant():
+    def __init__(self):
+        return 0
+class user_Collaborate_coupon():
+    def __init__(self):
+        return 0
+class merchant_Collaborate_merchant():
+    def __init__(self):
+        return 0
+

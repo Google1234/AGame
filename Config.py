@@ -58,6 +58,30 @@ class coupon_feature_format():
         self.not_used_coupon=5
         self.use_ratio=6
         self.len = 7
-
+'''
+class positive_sample_format():
+    def __init__(self):
+        self.user_feature=user_feature_format()
+        self.merchant_feature=merchant_feature_format()
+        self.coupon_feature=coupon_feature_format()
+        self.distance=0
+class negtive_sample_format():
+    def __init__(self):
+        self.user_feature = user_feature_format()
+        self.merchant_feature = merchant_feature_format()
+        self.coupon_feature = coupon_feature_format()
+        self.distance = 0
+class consump_not_use_coupon_sample():
+    def __init__(self):
+        self.user_feature = user_feature_format()
+        self.merchant_feature = merchant_feature_format()
+        self.coupon_feature = coupon_feature_format()
+        self.distance = 0
+'''
 path="Data/"
 feature_path="Feature/"
+sample_path="Sample/"
+tmp=path+"tmp/"
+
+#avr_distance=tools.cal_avr_distance(Config.path+"ccf_offline_stage1_train._sorted_by_User_id.csv",Config.file_offline_train_line())
+avr_distance=3.47628535976
