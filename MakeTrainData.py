@@ -1,9 +1,26 @@
 import Config
 import pandas
+from multiprocessing import Pool
 import FeatureExtract
-import tensorflow as tf
-def split_file(_dir,file_name,parts,file_format=Config.file_offline_train_line):
-    rats=pandas.read_csv(_dir+file_name,header=None)
+#import tensorflow as tf
+
+#def split_file(input_dir,input_file_name,output_dir,output_file_name,parts):
+'''
+dic={}
+dic["input_dir"]="Data/tmp/"
+dic["input_file_name"]="test.csv"
+dic["parts"]=4
+dic["output_dir"]="Data/tmp/"
+dic["output_file_name"]="test.csv"
+'''
+def split_file(dic):
+    input_dir=dic["input_dir"]
+    input_file_name=dic["input_file_name"]
+    parts=dic["parts"]
+    output_dir=dic["output_dir"]
+    output_file_name=dic["output_file_name"]
+
+    rats=pandas.read_csv(input_dir+input_file_name,header=None)
     remain=len(rats)
     last_line=0
     line=(remain+(parts-1))/parts
@@ -11,31 +28,38 @@ def split_file(_dir,file_name,parts,file_format=Config.file_offline_train_line):
     parts-=1
     id=1
     names=[]
-    if tf.gfile.Exists(_dir+"tmp/"):
-        tf.gfile.DeleteRecursively(_dir+"tmp/")
-    tf.gfile.MakeDirs(_dir+"tmp/")
+    #if tf.gfile.Exists(output_dir):
+        #tf.gfile.DeleteRecursively(output_dir)
+    #tf.gfile.MakeDirs(output_dir)
     while parts>0:
-        rats.iloc[last_line:line].to_csv(_dir+"tmp/"+str(id)+file_name,index=None,header=None)
-        names.append(str(id)+file_name)
+        rats.iloc[last_line:line].to_csv(output_dir+str(id)+output_file_name,index=None,header=None)
+        names.append(str(id)+output_file_name)
         last_line=line
         line+=((remain+(parts-1))/parts)
         remain -= ((remain + (parts - 1)) / parts)
         parts-=1
         id+=1
-    rats.iloc[last_line:].to_csv(_dir+"tmp/" +str(id) + file_name, index=None, header=None)
-    names.append(str(id)+file_name)
-    return _dir+"tmp/",names
-#def make(_dir,file,file_format=Config.file_offline_train_line()):
-def make(dic):
-    dic={}
-    _dir=dic["_dir"]
-    file=dic["file"]
-    if "file_format" in dic.keys():
-        file_format=dic["file_format"]
-    else:
-        file_format=Config.file_offline_train_line()
+    rats.iloc[last_line:].to_csv(output_dir+str(id) + output_file_name, index=None, header=None)
+    names.append(str(id)+output_file_name)
+    return output_dir,names
 
-    rats=pandas.read_csv(_dir+file,header=None)
+#def make(input_dir,input_file_name,output_dir,output_dir_name,file_format=Config.file_offline_train_line()):
+'''
+dic={}
+dic["input_dir"]=_dir
+dic["input_file_name"] = names[i]
+dic["file_format"]=Config.file_offline_train_line()
+dic["input_dir"] = _dir
+dic["output_file_name"] = output_file_name
+'''
+def make_samples(dic):
+    input_dir=dic["input_dir"]
+    input_file_name=dic["input_file_name"]
+    file_format=dic["file_format"]
+    output_dir=dic["output_dir"]
+    output_file_name=dic["output_file_name"]
+
+    rats=pandas.read_csv(input_dir+input_file_name,header=None)
     postive_sample=[]
     negtive_sample=[]
     consump_not_use_coupon_sample=[]
@@ -80,18 +104,57 @@ def make(dic):
             )
             if line%10000==0:
                 print "Finish ",line/10000,"*10000"
-    pandas.DataFrame(postive_sample).to_csv(_dir+"postive_sample_"+file,index=None,header=None)
-    pandas.DataFrame(negtive_sample).to_csv(_dir+"negtive_sample_"+file,index=None,header=None)
-    pandas.DataFrame(consump_not_use_coupon_sample).to_csv(_dir+"consump_not_use_coupon_sample_"+file,index=None,header=None)
-    return _dir,["postive_sample_"+file,"negtive_sample_"+file,"consump_not_use_coupon_sample_"+file]
+    #if tf.gfile.Exists(output_dir):
+        #tf.gfile.DeleteRecursively(output_dir)
+    #tf.gfile.MakeDirs(output_dir)
+    pandas.DataFrame(postive_sample).to_csv(output_dir+"postive_sample_"+output_file_name,index=None,header=None)
+    pandas.DataFrame(negtive_sample).to_csv(output_dir+"negtive_sample_"+output_file_name,index=None,header=None)
+    pandas.DataFrame(consump_not_use_coupon_sample).to_csv(output_dir+"consump_not_use_coupon_sample_"+output_file_name,index=None,header=None)
+    return output_dir,["postive_sample_"+output_file_name,"negtive_sample_"+output_file_name,"consump_not_use_coupon_sample_"+output_file_name]
+
+#def merge_files(input_dir,input_files_names,output_dir,output_name):
+'''
+dic={}
+dic["input_dir"]=_dir
+dic["input_files_names"]=names
+dic["output_dir"]="Data/tmp/"
+dic["output_name"]="merge.csv"
+'''
+def merge_files(dic):
+    input_dir=dic["input_dir"]
+    input_files_names=dic["input_files_names"]
+    output_dir=dic["output_dir"]
+    output_name=dic["output_name"]
+
+    frames=[]
+    for file in input_files_names:
+        frames.append(pandas.read_csv(input_dir+file,header=None))
+    #if tf.gfile.Exists(output_dir):
+        #tf.gfile.DeleteRecursively(output_dir)
+    #tf.gfile.MakeDirs(output_dir)
+    pandas.concat(frames).to_csv(output_dir+output_name,index=None,header=None)
+    return output_dir,output_name
 
 def parallel_make(process_numbers):
-    _dir,names=split_file("","test.csv",process_numbers)
+    #split files
+    dic = {}
+    dic["input_dir"] = "Data/tmp/"
+    dic["input_file_name"] = "test.csv"
+    dic["parts"] = 4
+    dic["output_dir"] = "Data/tmp/"
+    dic["output_file_name"] = "test.csv"
+    output_dir,names=split_file(dic)
+    #make samples
     dicts=[{} for i in range(len(names))]
-    for i in range():
-        dicts[]=
-    from multiprocessing import Pool
+    for i in range(len(names)):
+        dicts[i]["input_dir"]=output_dir
+        dicts[i]["input_file_name"] = names[i]
+        dicts[i]["file_format"]=Config.file_offline_train_line()
+        dicts[i]["output_dir"] =output_dir
+        dicts[i]["output_file_name"] = ".csv"
     pool = Pool(process_numbers)
-    pool.map(make,names)
+    print pool.map(make_samples,dicts)
     pool.close()
     pool.join()
+    #merge sample files to one file
+    pool=Pool()
