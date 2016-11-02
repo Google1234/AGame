@@ -89,7 +89,7 @@ def parallel_make(process_numbers):
     _dir,names=split_file("","test.csv",process_numbers)
     dicts=[{} for i in range(len(names))]
     for i in range():
-        dicts[]
+        dicts[]=
     from multiprocessing import Pool
     pool = Pool(process_numbers)
     pool.map(make,names)
