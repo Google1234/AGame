@@ -80,8 +80,9 @@ class consump_not_use_coupon_sample():
 '''
 path="Data/"
 feature_path="Feature/"
-sample_path="Sample/"
+sample_path=path+"Sample/"
 tmp=path+"tmp/"
+
 
 #avr_distance=tools.cal_avr_distance(Config.path+"ccf_offline_stage1_train._sorted_by_User_id.csv",Config.file_offline_train_line())
 avr_distance=3.47628535976

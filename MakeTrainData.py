@@ -2,7 +2,7 @@ import Config
 import pandas
 from multiprocessing import Pool
 import FeatureExtract
-#import tensorflow as tf
+import tensorflow as tf
 
 #def split_file(input_dir,input_file_name,output_dir,output_file_name,parts):
 '''
@@ -28,9 +28,9 @@ def split_file(dic):
     parts-=1
     id=1
     names=[]
-    #if tf.gfile.Exists(output_dir):
-        #tf.gfile.DeleteRecursively(output_dir)
-    #tf.gfile.MakeDirs(output_dir)
+    if tf.gfile.Exists(output_dir):
+        tf.gfile.DeleteRecursively(output_dir)
+    tf.gfile.MakeDirs(output_dir)
     while parts>0:
         rats.iloc[last_line:line].to_csv(output_dir+str(id)+output_file_name,index=None,header=None)
         names.append(str(id)+output_file_name)
@@ -105,7 +105,7 @@ def make_samples(dic):
             if line%10000==0:
                 print "Finish ",line/10000,"*10000"
     #if tf.gfile.Exists(output_dir):
-        #tf.gfile.DeleteRecursively(output_dir)
+    #    tf.gfile.DeleteRecursively(output_dir)
     #tf.gfile.MakeDirs(output_dir)
     pandas.DataFrame(postive_sample).to_csv(output_dir+"postive_sample_"+output_file_name,index=None,header=None)
     pandas.DataFrame(negtive_sample).to_csv(output_dir+"negtive_sample_"+output_file_name,index=None,header=None)
@@ -130,7 +130,7 @@ def merge_files(dic):
     for file in input_files_names:
         frames.append(pandas.read_csv(input_dir+file,header=None))
     #if tf.gfile.Exists(output_dir):
-        #tf.gfile.DeleteRecursively(output_dir)
+    #    tf.gfile.DeleteRecursively(output_dir)
     #tf.gfile.MakeDirs(output_dir)
     pandas.concat(frames).to_csv(output_dir+output_name,index=None,header=None)
     return output_dir,output_name
@@ -138,9 +138,9 @@ def merge_files(dic):
 def parallel_make(process_numbers):
     #split files
     dic = {}
-    dic["input_dir"] = "Data/tmp/"
-    dic["input_file_name"] = "test.csv"
-    dic["parts"] = 4
+    dic["input_dir"] = Config.path
+    dic["input_file_name"] = "ccf_offline_stage1_train._sorted_by_User_id.csv"
+    dic["parts"] = process_numbers
     dic["output_dir"] = "Data/tmp/"
     dic["output_file_name"] = "test.csv"
     output_dir,names=split_file(dic)
@@ -150,11 +150,28 @@ def parallel_make(process_numbers):
         dicts[i]["input_dir"]=output_dir
         dicts[i]["input_file_name"] = names[i]
         dicts[i]["file_format"]=Config.file_offline_train_line()
-        dicts[i]["output_dir"] =output_dir
-        dicts[i]["output_file_name"] = ".csv"
+        dicts[i]["output_dir"] =dicts[i]["input_dir"]
+        dicts[i]["output_file_name"] =names[i]
     pool = Pool(process_numbers)
-    print pool.map(make_samples,dicts)
+    results= pool.map(make_samples,dicts)
     pool.close()
     pool.join()
     #merge sample files to one file
-    pool=Pool()
+    num=len(results[0][1])
+    pool=Pool(num)######
+    dicts=[{} for i in range(num)]
+    names=["postive_sample.csv","negtive_sample.csv","consump_not_use_coupon.csv"]
+    for i in range(num):
+        dicts[i]["input_dir"]=results[0][0]
+        dicts[i]["input_files_names"]=[]
+        for j in range(len(results)):
+            dicts[i]["input_files_names"].append(results[j][1][i])
+        dicts[i]["output_dir"]="Data/Sample/"
+        dicts[i]["output_name"]=names[i]
+    results= pool.map(merge_files,dicts)
+    pool.close()
+    pool.join()
+
+    return True
+############################
+#parallel_make(8)

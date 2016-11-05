@@ -1,25 +1,3 @@
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the 'License');
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""A simple MNIST classifier which displays summaries in TensorBoard.
-
- This is an unimpressive MNIST model, but it is a good example of using
-tf.name_scope to make a graph legible in the TensorBoard graph explorer, and of
-naming summary tags so that they are grouped meaningfully in TensorBoard.
-
-It demonstrates the functionality of every TensorBoard dashboard.
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -28,7 +6,7 @@ import argparse
 import sys
 
 import tensorflow as tf
-
+import numpy as np
 import numpy
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
@@ -39,6 +17,36 @@ FLAGS = None
 
 
 import Config
+import random
+import pandas
+
+def dense_to_one_hot(labels_dense, num_classes):
+  """Convert class labels from scalars to one-hot vectors."""
+  num_labels = labels_dense.shape[0]
+  index_offset = numpy.arange(num_labels) * num_classes
+  labels_one_hot = numpy.zeros((num_labels, num_classes))
+  labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
+  return labels_one_hot
+def extract_samples():
+  rats1 = pandas.read_csv(FLAGS.data_dir + "postive_sample.csv", header=None)
+  len1 = len(rats1)
+  rats2 = pandas.read_csv(FLAGS.data_dir + "negtive_sample.csv", header=None)
+  len2 = len(rats2)
+  items = [i for i in range(len1 + len2)]
+  random.shuffle(items)
+  feature = []
+  label = []
+  for item in items:
+    if item < len1:
+      feature.append([fea for fea in rats1.iloc[item]])
+      label.append(0)
+    else:
+      feature.append([fea for fea in rats2.iloc[item - len1]])
+      label.append(1)
+  features=np.array(feature)
+  labels=dense_to_one_hot(np.array(label),FLAGS.class_numbers)
+  #features = features.reshape(num_images, rows, cols, 1)
+  return features,labels
 
 class DataSet(object):
 
@@ -69,14 +77,16 @@ class DataSet(object):
       # Convert shape from [num examples, rows, columns, depth]
       # to [num examples, rows*columns] (assuming depth == 1)
       if reshape:
+        '''
         assert images.shape[3] == 1
         images = images.reshape(images.shape[0],
                                 images.shape[1] * images.shape[2])
+        '''
       if dtype == dtypes.float32:
         # Convert from [0, 255] -> [0.0, 1.0].
-        images = images.astype(numpy.float32)
+        images = samples.astype(numpy.float32)
         images = numpy.multiply(images, 1.0 / 255.0)
-    self._images = images
+    self._images = samples
     self._labels = labels
     self._epochs_completed = 0
     self._index_in_epoch = 0
@@ -130,7 +140,7 @@ def read_data_sets(train_dir,
                    one_hot=False,
                    dtype=dtypes.float32,
                    reshape=True,
-                   validation_size=5000):
+                   ):
   if fake_data:
 
     def fake():
@@ -141,47 +151,30 @@ def read_data_sets(train_dir,
     test = fake()
     return base.Datasets(train=train, validation=validation, test=test)
 
-  TRAIN_IMAGES = 'train-images-idx3-ubyte.gz'
-  TRAIN_LABELS = 'train-labels-idx1-ubyte.gz'
-  TEST_IMAGES = 't10k-images-idx3-ubyte.gz'
-  TEST_LABELS = 't10k-labels-idx1-ubyte.gz'
+  feature,labels=extract_samples()
+  i=int(len(feature)*FLAGS.train_ratio)
 
-  local_file = base.maybe_download(TRAIN_IMAGES, train_dir,
-                                   SOURCE_URL + TRAIN_IMAGES)
-  with open(local_file, 'rb') as f:
-    train_images = extract_images(f)
+  train_features_buff= feature[:i]
+  train_labels_buff = labels[:i]
+  test_samples = feature[i:]
+  test_labels = labels[i:]
 
-  local_file = base.maybe_download(TRAIN_LABELS, train_dir,
-                                   SOURCE_URL + TRAIN_LABELS)
-  with open(local_file, 'rb') as f:
-    train_labels = extract_labels(f, one_hot=one_hot)
-
-  local_file = base.maybe_download(TEST_IMAGES, train_dir,
-                                   SOURCE_URL + TEST_IMAGES)
-  with open(local_file, 'rb') as f:
-    test_images = extract_images(f)
-
-  local_file = base.maybe_download(TEST_LABELS, train_dir,
-                                   SOURCE_URL + TEST_LABELS)
-  with open(local_file, 'rb') as f:
-    test_labels = extract_labels(f, one_hot=one_hot)
-
-  if not 0 <= validation_size <= len(train_images):
+  if not 0 <= FLAGS.validation_size <= len(train_features_buff):
     raise ValueError(
         'Validation size should be between 0 and {}. Received: {}.'
-        .format(len(train_images), validation_size))
+        .format(len(train_features_buff), FLAGS.validation_size))
 
-  validation_images = train_images[:validation_size]
-  validation_labels = train_labels[:validation_size]
-  train_images = train_images[validation_size:]
-  train_labels = train_labels[validation_size:]
+  validation_samples = train_features_buff[:FLAGS.validation_size]
+  validation_labels = train_labels_buff[:FLAGS.validation_size]
+  train_samples = train_features_buff[FLAGS.validation_size:]
+  train_labels = train_labels_buff[FLAGS.validation_size:]
 
-  train = DataSet(train_images, train_labels, dtype=dtype, reshape=reshape)
-  validation = DataSet(validation_images,
+  train = DataSet(train_samples, train_labels, dtype=dtype, reshape=reshape)
+  validation = DataSet(validation_samples,
                        validation_labels,
                        dtype=dtype,
                        reshape=reshape)
-  test = DataSet(test_images, test_labels, dtype=dtype, reshape=reshape)
+  test = DataSet(test_samples, test_labels, dtype=dtype, reshape=reshape)
 
   return base.Datasets(train=train, validation=validation, test=test)
 def train():
@@ -195,12 +188,12 @@ def train():
 
   # Input placeholders
   with tf.name_scope('input'):
-    x = tf.placeholder(tf.float32, [None, 784], name='x-input')
-    y_ = tf.placeholder(tf.float32, [None, 10], name='y-input')
+    x = tf.placeholder(tf.float32, [None, FLAGS.feature_numbers], name='x-input')
+    y_ = tf.placeholder(tf.float32, [None, FLAGS.class_numbers], name='y-input')
 
-  with tf.name_scope('input_reshape'):
-    image_shaped_input = tf.reshape(x, [-1, 28, 28, 1])
-    tf.summary.image('input', image_shaped_input, 10)
+  #with tf.name_scope('input_reshape'):
+  #  image_shaped_input = tf.reshape(x, [-1, 28, 28, 1])
+  #  tf.summary.image('input', image_shaped_input, 10)
 
   # We can't initialize these variables to 0 - the network will get stuck.
   def weight_variable(shape):
@@ -248,7 +241,7 @@ def train():
       tf.summary.histogram('activations', activations)
       return activations
 
-  hidden1 = nn_layer(x, 784, 500, 'layer1')
+  hidden1 = nn_layer(x, FLAGS.feature_numbers, 40, 'layer1')
 
   with tf.name_scope('dropout'):
     keep_prob = tf.placeholder(tf.float32)
@@ -256,7 +249,7 @@ def train():
     dropped = tf.nn.dropout(hidden1, keep_prob)
 
   # Do not apply softmax activation yet, see below.
-  y = nn_layer(dropped, 500, 10, 'layer2', act=tf.identity)
+  y = nn_layer(dropped, 40, FLAGS.class_numbers, 'layer2', act=tf.identity)
 
   with tf.name_scope('cross_entropy'):
     # The raw formulation of cross-entropy,
@@ -299,7 +292,7 @@ def train():
   def feed_dict(train):
     """Make a TensorFlow feed_dict: maps data onto Tensor placeholders."""
     if train or FLAGS.fake_data:
-      xs, ys = mnist.train.next_batch(100, fake_data=FLAGS.fake_data)
+      xs, ys = mnist.train.next_batch(FLAGS.batch_sizes, fake_data=FLAGS.fake_data)
       k = FLAGS.dropout
     else:
       xs, ys = mnist.test.images, mnist.test.labels
@@ -325,6 +318,7 @@ def train():
       else:  # Record a summary
         summary, _ = sess.run([merged, train_step], feed_dict=feed_dict(True))
         train_writer.add_summary(summary, i)
+
   train_writer.close()
   test_writer.close()
 
@@ -345,7 +339,17 @@ if __name__ == '__main__':
                       help='Initial learning rate')
   parser.add_argument('--dropout', type=float, default=0.9,
                       help='Keep probability for training dropout.')
-  parser.add_argument('--data_dir', type=str, default=Config.path+Config.sample_path+"test",
+  parser.add_argument('--feature_numbers', type=int, default=17,
+                      help='the feature numbers of input data')
+  parser.add_argument('--class_numbers', type=int, default=2,
+                      help='the class numbers ')
+  parser.add_argument('--batch_sizes', type=int, default=10000,
+                      help='the class numbers ')
+  parser.add_argument('--train_ratio', type=float, default=0.9,
+                      help='ratio of samples used for train samples,remains used for test samples')
+  parser.add_argument('--validation_size', type=int, default=10000,
+                      help='')
+  parser.add_argument('--data_dir', type=str, default=Config.sample_path,
                       help='Directory for storing input data')
   parser.add_argument('--log_dir', type=str, default='/tmp/AGame/summaries',
                       help='Summaries log directory')
