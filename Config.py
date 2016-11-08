@@ -22,13 +22,12 @@ class file_online_train_line():
         self.dic["Date"] = 6
 class file_offline_test_line():
     def __init__(self):
-        self.dic={}
-        self.dic["User_id"] = 0
-        self.dic["Merchant_id"] = 1
-        self.dic["Coupon_id"] = 2
-        self.dic["Discount_rate"] = 3
-        self.dic["Distance"] = 4
-        self.dic["Date_received"] = 5
+        self.User_id = 0
+        self.Merchant_id= 1
+        self.Coupon_id= 2
+        self.Discount_rate = 3
+        self.Distance= 4
+        self.Date_received = 5
 class user_feature_format():
     def __init__(self):
         self.user_id=0

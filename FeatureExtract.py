@@ -262,6 +262,40 @@ class coupon_feature():
                 else:
                     right=mid-1
         return self.average
+class distance_feature():
+    def __init__(self,filename):
+        self.rats=pandas.read_csv(filename,header=None)
+        self.len=len(self.rats)
+        self.feature=Config.file_offline_train_line()
+    def get(self,user_id,merchant_id):
+        if id=="null" or merchant_id=="null":
+            return [self.average]
+        left=0
+        right=self.len-1
+        if user_id<self.rats.iloc[left][self.feature.User_id] or user_id>self.rats.iloc[right][self.feature.User_id]:
+            return [self.average]
+        while left<=right:
+            mid=(left+right)/2
+            if self.rats.iloc[mid][self.feature.User_id]==user_id:
+                up=mid
+                while self.rats.iloc[up][self.feature.User_id]==user_id:
+                    if self.rats.iloc[up][self.feature.Merchant_id]==merchant_id:
+                        return [int(self.rats.iloc[up][self.feature.Distance])]
+                    else:
+                        up-=1
+                down=mid
+                while self.rats.iloc[down][self.feature.User_id]==user_id:
+                    if self.rats.iloc[down][self.feature.Merchant_id]==merchant_id:
+                        return [int(self.rats.iloc[down][self.feature.Distance])]
+                    else:
+                        down+=1
+                return [Config.avr_distance]
+            else:
+                if self.rats.iloc[mid][self.feature.User_id]<user_id:
+                    left=mid+1
+                else:
+                    right=mid-1
+        return [self.average]
 
 class user_Collaborate_merchant():
     def __init__(self):

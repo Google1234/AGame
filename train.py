@@ -19,6 +19,11 @@ FLAGS = None
 import Config
 import random
 import pandas
+import MakePredictionSamples
+
+USE = 0
+NOT_USE = 1
+
 
 def dense_to_one_hot(labels_dense, num_classes):
   """Convert class labels from scalars to one-hot vectors."""
@@ -32,17 +37,19 @@ def extract_samples():
   len1 = len(rats1)
   rats2 = pandas.read_csv(FLAGS.data_dir + "negtive_sample.csv", header=None)
   len2 = len(rats2)
-  items = [i for i in range(len1 + len2)]
+  resample_negtive_samples=1
+  items = [i for i in range(len1 + resample_negtive_samples*len2)]
   random.shuffle(items)
   feature = []
   label = []
   for item in items:
     if item < len1:
       feature.append([fea for fea in rats1.iloc[item]])
-      label.append(0)
+      label.append(USE)
     else:
-      feature.append([fea for fea in rats2.iloc[item - len1]])
-      label.append(1)
+      line=(item - len1)%len2
+      feature.append([fea for fea in rats2.iloc[line]])
+      label.append(NOT_USE)
   features=np.array(feature)
   labels=dense_to_one_hot(np.array(label),FLAGS.class_numbers)
   #features = features.reshape(num_images, rows, cols, 1)
@@ -177,6 +184,19 @@ def read_data_sets(train_dir,
   test = DataSet(test_samples, test_labels, dtype=dtype, reshape=reshape)
 
   return base.Datasets(train=train, validation=validation, test=test)
+def store_pre(input_file,pre,output_file,index,file_format=Config.file_offline_test_line()):
+  rats=pandas.read_csv(input_file,header=None)
+  if len(rats)!=len(pre):
+    print ("Size Error")
+    return False
+  results=[]
+  for i in range(len(rats)):
+    results.append([rats.iloc[i][file_format.User_id],
+                    rats.iloc[i][file_format.Coupon_id],
+                    rats.iloc[i][file_format.Date_received],
+                    pre[i][index]])
+  pandas.DataFrame(results, index=None).to_csv(output_file,index=None, header=None)
+
 def train():
   # Import data
   mnist = read_data_sets(FLAGS.data_dir,
@@ -241,7 +261,7 @@ def train():
       tf.summary.histogram('activations', activations)
       return activations
 
-  hidden1 = nn_layer(x, FLAGS.feature_numbers, 40, 'layer1')
+  hidden1 = nn_layer(x, FLAGS.feature_numbers, 20, 'layer1')
 
   with tf.name_scope('dropout'):
     keep_prob = tf.placeholder(tf.float32)
@@ -249,7 +269,7 @@ def train():
     dropped = tf.nn.dropout(hidden1, keep_prob)
 
   # Do not apply softmax activation yet, see below.
-  y = nn_layer(dropped, 40, FLAGS.class_numbers, 'layer2', act=tf.identity)
+  y = nn_layer(dropped, 20, FLAGS.class_numbers, 'layer2', act=tf.identity)
 
   with tf.name_scope('cross_entropy'):
     # The raw formulation of cross-entropy,
@@ -270,6 +290,8 @@ def train():
   with tf.name_scope('train'):
     train_step = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(
         cross_entropy)
+  with tf.name_scope('prediction'):
+    predictions = tf.nn.softmax(y)
 
   with tf.name_scope('accuracy'):
     with tf.name_scope('correct_prediction'):
@@ -299,6 +321,15 @@ def train():
       k = 1.0
     return {x: xs, y_: ys, keep_prob: k}
 
+  def pre_feed_dict():
+    rats=pandas.read_csv(FLAGS.data_dir+"prediction_samples.csv",header=None)
+    samples=[]
+    labels=[]
+    for line in range(len(rats)):
+      samples.append([fea for fea in rats.iloc[line]])
+      labels.append([0])
+    return {x: np.array(samples), y_: dense_to_one_hot(np.array(labels),FLAGS.class_numbers), keep_prob: 1.0}
+
   for i in range(FLAGS.max_steps):
     if i % 10 == 0:  # Record summaries and test-set accuracy
       summary, acc = sess.run([merged, accuracy], feed_dict=feed_dict(False))
@@ -318,7 +349,10 @@ def train():
       else:  # Record a summary
         summary, _ = sess.run([merged, train_step], feed_dict=feed_dict(True))
         train_writer.add_summary(summary, i)
-
+  #predictions
+  pres=sess.run(predictions, feed_dict=pre_feed_dict())
+  #store_pre(MakePredictionSamples.input_file_name,pres,USE,FLAGS.data_dir+"result.csv")
+  store_pre(Config.path+"ccf_offline_stage1_test_revised.csv",pres,FLAGS.data_dir + "result.csv",USE, )
   train_writer.close()
   test_writer.close()
 
@@ -333,7 +367,7 @@ if __name__ == '__main__':
   parser.add_argument('--fake_data', nargs='?', const=True, type=bool,
                       default=False,
                       help='If true, uses fake data for unit testing.')
-  parser.add_argument('--max_steps', type=int, default=1000,
+  parser.add_argument('--max_steps', type=int, default=1500,
                       help='Number of steps to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=0.001,
                       help='Initial learning rate')
@@ -343,7 +377,7 @@ if __name__ == '__main__':
                       help='the feature numbers of input data')
   parser.add_argument('--class_numbers', type=int, default=2,
                       help='the class numbers ')
-  parser.add_argument('--batch_sizes', type=int, default=10000,
+  parser.add_argument('--batch_sizes', type=int, default=50000,
                       help='the class numbers ')
   parser.add_argument('--train_ratio', type=float, default=0.9,
                       help='ratio of samples used for train samples,remains used for test samples')
