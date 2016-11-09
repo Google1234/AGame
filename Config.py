@@ -57,6 +57,7 @@ class coupon_feature_format():
         self.not_used_coupon=5
         self.use_ratio=6
         self.len = 7
+
 '''
 class positive_sample_format():
     def __init__(self):
@@ -78,7 +79,7 @@ class consump_not_use_coupon_sample():
         self.distance = 0
 '''
 path="Data/"
-feature_path="Feature/"
+feature_path=path+"Feature/"
 sample_path=path+"Sample/"
 tmp=path+"tmp/"
 

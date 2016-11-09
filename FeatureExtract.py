@@ -177,7 +177,70 @@ def bulid_coupon_feature():
     sort_before=pandas.read_csv(Config.path+Config.feature_path+"Coupon_from_offline_train111.csv",header=None)
     sort_before.sort_values(by=feature_format.coupon_id,inplace=True)
     sort_before.to_csv(Config.path+Config.feature_path+"Coupon_from_offline_train.csv",index=None,header=None)
+def bulid_collaborate_feature():
+    #user_feature from offline train file
+    rats=pandas.read_csv(Config.path+"ccf_offline_stage1_train._sorted_by_User_id.csv",header=None)
+    feature_format=Config.collaborate_feature_format()
+    file_format=Config.file_offline_train_line()
+    result=[]
+    result.append([0 for i in xrange(feature_format.len)])
+    line2=0
+    result[line2][feature_format.user_id] = rats.iloc[0][file_format.User_id]
+    merchant_dic={}
+    coupon_dic={}
+    print len(rats)/10000
+    for line in xrange(len(rats)):
+        if rats.iloc[line][file_format.User_id]!=result[line2][feature_format.user_id]:
+            if (result[line2][feature_format.not_coupon_consump]+
+                    result[line2][feature_format.coupon_consump])==0:
+                result[line2][feature_format.coupon_consump_div_total_consump]=0.5
+            else:
+                result[line2][feature_format.coupon_consump_div_total_consump]=result[line2][feature_format.coupon_consump]*1.0\
+                                                                           /(result[line2][feature_format.not_coupon_consump]+
+                                                                             result[line2][feature_format.coupon_consump])
+            if  result[line2][feature_format.total_coupon]==0:
+                result[line2][feature_format.coupon_consump_div_total_coupon]=0.5
+            else:
+                result[line2][feature_format.coupon_consump_div_total_coupon] = result[line2][
+                                                                                 feature_format.coupon_consump] * 1.0 \
+                                                                             / (result[line2][feature_format.total_coupon])
+            result.append([0 for i in xrange(feature_format.len)])
+            line2+=1
+            result[line2][feature_format.user_id] = rats.iloc[line][file_format.User_id]
+        if rats.iloc[line][file_format.Merchant_id] not in merchant_dic.keys():
+            merchant_dic[rats.iloc[line][file_format.Merchant_id]]=line
+        if rats.iloc[line][file_format.Coupon_id] not in coupon_dic.keys():
+            coupon_dic[rats.iloc[line][file_format.Coupon_id]]=line
 
+        if rats.iloc[line][file_format.Date]!="null":
+            if rats.iloc[line][file_format.Date_received]!="null":
+                result[line2][feature_format.coupon_consump]+=1
+            else:
+                result[line2][feature_format.not_coupon_consump]+=1
+        if rats.iloc[line][file_format.Date_received]!="null":
+            result[line2][feature_format.total_coupon]+=1
+
+        if line%10000==0:
+            print line/10000
+
+    if (result[line2][feature_format.not_coupon_consump] +
+            result[line2][feature_format.coupon_consump]) == 0:
+        result[line2][feature_format.coupon_consump_div_total_consump] = 0.5
+    else:
+        result[line2][feature_format.coupon_consump_div_total_consump] = result[line2][feature_format.coupon_consump] * 1.0 \
+                                                                         / (
+                                                                         result[line2][feature_format.not_coupon_consump] +
+                                                                         result[line2][feature_format.coupon_consump])
+    if result[line2][feature_format.total_coupon] == 0:
+        result[line2][feature_format.coupon_consump_div_total_coupon] = 0.5
+    else:
+        result[line2][feature_format.coupon_consump_div_total_coupon] = result[line2][
+                                                                            feature_format.coupon_consump] * 1.0 \
+                                                                        / (result[line2][feature_format.total_coupon])
+    pandas.DataFrame(result).to_csv(Config.path+Config.feature_path+"User_from_offline_train.csv",index=None,header=None)
+
+
+    pandas.DataFrame(result).to_csv(Config.path+Config.feature_path+"Collaborate_from_offline_train.csv",index=None,header=None)
 class user_feature():
     def __init__(self,filename,recalculate_avr):
         self.rats=pandas.read_csv(filename,header=None)
@@ -296,14 +359,4 @@ class distance_feature():
                 else:
                     right=mid-1
         return [self.average]
-
-class user_Collaborate_merchant():
-    def __init__(self):
-        return 0
-class user_Collaborate_coupon():
-    def __init__(self):
-        return 0
-class merchant_Collaborate_merchant():
-    def __init__(self):
-        return 0
 
